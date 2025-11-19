@@ -27,11 +27,11 @@ async def parse_page(browser_page: Page) -> tuple[dict, bool]:
     results = await browser_page.locator(xpath).all()
 
     logger.info(f"Found {len(results)} listing containers")
-    logger.info(f"Starting to parse listings...")
+    logger.info(f"Starting to parse listings ...")
 
     # Loop through all listings
     for idx, result in enumerate(results):
-        logger.info(f"Processing listing {idx + 1}/{len(results)}...")
+        logger.info(f"Processing listing {idx + 1}/{len(results)} ...")
         try:
             item_id, data = await parse_result(result, idx)
             extracted_data[item_id] = data
