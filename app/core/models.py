@@ -10,7 +10,7 @@ from sqlalchemy import (
     MetaData,
     Float,
     func,
-    Enum,
+    Enum, Boolean,
 )
 from sqlalchemy.orm import declarative_base, Mapped
 
@@ -30,10 +30,12 @@ class Listing(Base):
     item_id: Mapped[str] = Column(String(50), unique=True, index=True)
     url: Mapped[str] = Column(String(150), unique=True)
     listing_type: Mapped[ListingType] = Column(Enum(ListingType))
+    location: Mapped[Optional[str]] = Column(String(200), nullable=True)
 
     # Price tracking
     price: Mapped[float] = Column(Float)
     last_price: Mapped[Optional[float]] = Column(Float, nullable=True)
+    is_price_per_sqm: Mapped[bool] = Column(Boolean, default=False)
 
     # Timestamps
     first_seen: Mapped[datetime] = Column(DateTime, default=func.now())

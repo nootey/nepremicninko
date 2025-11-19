@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import (
 from app.core.logger import AppLogger
 from app.core.models import meta
 
-logger = AppLogger(name="db").get_logger()
+logger = AppLogger(name="database").get_logger()
 
-class DatabaseManager:
+class DatabaseClient:
 
     def __init__(self, url: str):
         self.db_connections = threading.local()
