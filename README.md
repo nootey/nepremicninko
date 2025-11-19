@@ -24,20 +24,20 @@ You can run the app locally, but the easiest way is with Docker.
 Run the scrapper with this command:
 
 ```bash
-   docker compose -f ./deployment/docker-compose.yml -p nepremicninko up
+docker compose -f ./deployment/docker-compose.yml -p nepremicninko up
 ```
 
 ## Local
 If you want to run nepremicninko locally for development:
 
 ```bash
-   uv sync
+uv sync
 ```
 
 Install Playwright browsers
 
 ```bash
-   uv run playwright install chromium
+uv run playwright install chromium
 ```
 
 ## Configuration
