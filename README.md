@@ -43,6 +43,11 @@ Install Playwright browsers
 ## Configuration
 
 Access `./config/urls.txt` and define your search parameters.
+You can use multiple URLs, each in a new line
+Example url: 
+```
+https://www.nepremicnine.net/oglasi-prodaja/***
+```
 
 ## Logging
 
