@@ -1,4 +1,5 @@
-from playwright.async_api import Page, Locator
+from playwright.async_api import Locator, Page
+
 from app.core.logger import AppLogger
 
 logger = AppLogger(name="parser").get_logger()
@@ -27,7 +28,7 @@ async def parse_page(browser_page: Page) -> tuple[dict, bool]:
     results = await browser_page.locator(xpath).all()
 
     logger.info(f"Found {len(results)} listing containers")
-    logger.info(f"Starting to parse listings ...")
+    logger.info("Starting to parse listings ...")
 
     # Loop through all listings
     for idx, result in enumerate(results):

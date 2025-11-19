@@ -1,4 +1,5 @@
 import requests
+
 from app.core.config import config
 from app.core.logger import AppLogger
 

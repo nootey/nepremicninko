@@ -1,7 +1,8 @@
-from datetime import datetime
 import logging
-from pythonjsonlogger import jsonlogger
+from datetime import datetime
 from pathlib import Path
+
+from pythonjsonlogger import jsonlogger
 
 
 class AppLogger:

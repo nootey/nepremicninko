@@ -2,11 +2,11 @@ import threading
 from asyncio import current_task
 
 from sqlalchemy.ext.asyncio import (
-    async_sessionmaker,
-    create_async_engine,
     AsyncEngine,
     AsyncSession,
     async_scoped_session,
+    async_sessionmaker,
+    create_async_engine,
 )
 
 from app.core.logger import AppLogger

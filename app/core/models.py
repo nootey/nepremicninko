@@ -3,16 +3,17 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
+    Boolean,
     Column,
-    Integer,
-    String,
     DateTime,
-    MetaData,
+    Enum,
     Float,
+    Integer,
+    MetaData,
+    String,
     func,
-    Enum, Boolean,
 )
-from sqlalchemy.orm import declarative_base, Mapped
+from sqlalchemy.orm import Mapped, declarative_base
 
 meta = MetaData()
 Base = declarative_base(metadata=meta)
