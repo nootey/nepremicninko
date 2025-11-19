@@ -16,4 +16,8 @@ class Config(BaseSettings):
     DB_PATH: str
     DISCORD_WEBHOOK_URL: str
 
+    SCHEDULER_ENABLED: bool = True
+    SCHEDULER_INTERVAL_MINUTES: int
+    SCHEDULER_TIMEZONE: str
+
 config = Config() # type: ignore

@@ -5,11 +5,12 @@ from app.core.config import config
 from app.core.database import DatabaseClient
 from app.core.logger import AppLogger
 from app.services.crawler import crawl
+from app.services.scheduler import start_scheduler
 
-logger = AppLogger(name="scraper").get_logger()
+logger = AppLogger(name="app").get_logger()
 
 async def main():
-    logger.info("Starting scraper application")
+    logger.info("Starting application")
     db_client = None
     try:
         # Ensure database directory exists
@@ -24,17 +25,26 @@ async def main():
         await db_client.create_models()
         logger.info("Database initialized successfully")
 
-
+        # Run initial scrape
+        logger.info("Starting initial scrape ...")
         await crawl(db_client)
+        logger.info("Initial scrape completed")
 
-        logger.info("Scraper finished successfully")
+        # Start scheduler if enabled
+        if config.SCHEDULER_ENABLED:
+            logger.info("Starting scheduler ...")
+            await start_scheduler(db_client)
+        else:
+            logger.info("Scheduler disabled, exiting after initial scrape")
+
+        logger.info("Crawler finished successfully")
 
     except Exception as e:
-        logger.error(f"Scraper failed: {e}", exc_info=True)
+        logger.error(f"Application failure: {e}", exc_info=True)
         raise
     finally:
         # Clean up database connections
-        if 'db_client' in locals():
+        if db_client in locals():
             await db_client.cleanup()
             logger.info("Database cleanup completed")
 
