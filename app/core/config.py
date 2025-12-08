@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class DatabaseConfig(BaseModel):
-    path: str
+    path: str = "./storage/db/nepremicninko.sqlite"
     auto_flush: bool = True
 
 
@@ -14,8 +14,8 @@ class DiscordConfig(BaseModel):
 
 class SchedulerConfig(BaseModel):
     enabled: bool = True
-    interval_minutes: int
-    timezone: str
+    interval_minutes: int = 3
+    timezone: str = "Europe/Ljubljana"
 
 
 class Config(BaseModel):
