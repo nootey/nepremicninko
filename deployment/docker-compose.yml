@@ -8,10 +8,4 @@ services:
     volumes:
       - ../storage:/app/storage
       - ../logs:/app/logs
-      - ../config/:/app/config/
-    environment:
-      - ENVIRONMENT=production
-      - SCHEDULER_ENABLED=true
-      - SCHEDULER_INTERVAL_MINUTES=1
-    env_file:
-      - ../.env
+      - ../config.yaml:/app/config.yaml
