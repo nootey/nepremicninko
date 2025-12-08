@@ -6,9 +6,24 @@ This is an unofficial fork of [nepremicnine-discord-bot](https://github.com/mevl
 
 This is an unofficial tool and is not affiliated with Nepremicnine.net. Please use responsibly and respect their terms of service.
 
-## Setup
+## Configuration
 
-You need to set up the environment variables. An `.env.example` is provided, all you need to do is provide your Discord webhook, everything else should work from the box.
+You need to set up a config file `config.yaml` in project root.
+An `config.example.yaml` file is provided, all you need to do is input your Discord webhook, 
+everything else has reasonable defaults.
+
+
+Fill out the `urls:` field and define your search parameters.
+You can use multiple URLs, each in a new line
+
+Example url: 
+```yaml
+urls:
+  # Rent
+  - https://www.nepremicnine.net/oglasi-oddaja/ljubljana-mesto/stanovanje/1-sobno,2-sobno/cena-do-600-eur-na-mesec
+  # Purchase
+  - https://www.nepremicnine.net/oglasi-prodaja/ljubljana-mesto/stanovanje/1-sobno,2-sobno/
+```
 
 ### How to access Discords webhook URL
 
@@ -40,13 +55,9 @@ Install Playwright browsers
 uv run playwright install chromium
 ```
 
-## Configuration
-
-Access `./config/urls.txt` and define your search parameters.
-You can use multiple URLs, each in a new line
-Example url: 
-```
-https://www.nepremicnine.net/oglasi-prodaja/***
+Run the app
+```bash
+python -m main
 ```
 
 ## Logging
