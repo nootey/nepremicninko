@@ -30,10 +30,13 @@ async def main():
         await crawl(db_client)
         logger.info("Initial scrape completed")
 
+        # Close the connection
+        await db_client.cleanup()
+
         # Start scheduler if enabled
         if config.scheduler.enabled:
             logger.info("Starting scheduler ...")
-            await start_scheduler(db_client)
+            await start_scheduler()
         else:
             logger.info("Scheduler disabled, exiting after initial scrape")
 
@@ -42,11 +45,6 @@ async def main():
     except Exception as e:
         logger.error(f"Application failure: {e}", exc_info=True)
         raise
-    finally:
-        # Clean up database connections
-        if db_client in locals():
-            await db_client.cleanup()
-            logger.info("Database cleanup completed")
 
 if __name__ == "__main__":
     asyncio.run(main())
