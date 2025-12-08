@@ -51,8 +51,8 @@ async def start_scheduler() -> None:
 
     scheduler.add_job(
         run_scrape_job,
-        'cron',
-        minute=f"*/{config.scheduler.interval_minutes}",
+        'interval',
+        minutes=config.scheduler.interval_minutes,
         timezone=timezone,
         max_instances=1
     )
