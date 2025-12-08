@@ -1,6 +1,5 @@
 import threading
 from asyncio import current_task
-
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -8,9 +7,10 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy import select
 
 from app.core.logger import AppLogger
-from app.core.models import meta
+from app.core.models import meta, Listing
 
 logger = AppLogger(name="database").get_logger()
 
@@ -54,3 +54,55 @@ class DatabaseClient:
         async with self.async_engine().begin() as conn:
             await conn.run_sync(meta.create_all)
         logger.debug("Finished creating ORM modules.")
+
+    async def insert_listing(self, session: AsyncSession, listing: Listing):
+        session.add(listing)
+
+    async def get_listings(self, limit: int = None):
+        session_factory = self.async_session_factory()
+        async with session_factory() as session:
+
+            query = select(Listing)
+            if limit:
+                query = query.limit(limit)
+
+            result = await session.execute(query)
+            listings = result.scalars().all()
+
+            return listings
+
+    async def get_listing_by_id(self, session: AsyncSession, item_id: str):
+
+        result = await session.execute(
+            select(Listing).where(Listing.item_id == item_id)
+        )
+        listing = result.scalar_one_or_none()
+
+        return listing
+
+    async def flush_listings(self):
+
+        logger.info("Flushing all listings from database ...")
+
+        session_factory = self.async_session_factory()
+        async with session_factory() as session:
+            # Count existing records
+            from sqlalchemy import func, delete
+            count_result = await session.execute(
+                func.count(Listing.item_id)
+            )
+            count = count_result.scalar()
+
+            if count == 0:
+                logger.info("No listings to flush.")
+                return 0
+
+            # Delete all listings
+            result = await session.execute(
+                delete(Listing)
+            )
+            await session.commit()
+
+            deleted_count = result.rowcount
+            logger.info(f"Successfully flushed {deleted_count} listings from database.")
+            return deleted_count

@@ -22,7 +22,7 @@ async def read_urls():
     else:
         return urls
 
-async def scrape_url(browser, page_url, db_session):
+async def scrape_url(browser, page_url, db_client):
     logger.info(f"Scraping: {page_url}")
 
     new_listings = []
@@ -32,83 +32,82 @@ async def scrape_url(browser, page_url, db_session):
         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     )
 
-    try:
-        while True:
-            current_url = f"{page_url}{page_num}/" if page_num > 1 else page_url
+    session_factory = db_client.async_session_factory()
+    async with session_factory() as session:
+        try:
+            while True:
+                current_url = f"{page_url}{page_num}/" if page_num > 1 else page_url
 
-            await browser_page.goto(current_url, wait_until="domcontentloaded")
-            await asyncio.sleep(2)
+                await browser_page.goto(current_url, wait_until="domcontentloaded")
+                await asyncio.sleep(2)
 
-            listings, has_more = await parse_page(browser_page)
-            logger.info(f"Found {len(listings)} listings on page {page_num}")
+                listings, has_more = await parse_page(browser_page)
+                logger.info(f"Found {len(listings)} listings on page {page_num}")
 
-            # Check each listing against database
-            for item_id, data in listings.items():
+                # Check each listing against database
+                for item_id, data in listings.items():
 
-                result = await db_session.execute(
-                    select(Listing).where(Listing.item_id == item_id)
-                )
-                existing = result.scalar_one_or_none()
+                    existing = await db_client.get_listing_by_id(session, item_id)
 
-                if existing:
-                    # Check for price change
-                    if existing.price != data["price"]:
-                        logger.info(f"Price change detected for {item_id}: {existing.price} -> {data['price']}")
-                        existing.last_price = existing.price
-                        existing.price = data["price"]
-                        existing.last_seen = datetime.now()
-                        existing.accessed_time = datetime.now()
+                    if existing:
+                        # Check for price change
+                        if existing.price != data["price"]:
+                            logger.info(f"Price change detected for {item_id}: {existing.price} -> {data['price']}")
+                            existing.last_price = existing.price
+                            existing.price = data["price"]
+                            existing.last_seen = datetime.now()
+                            existing.accessed_time = datetime.now()
+
+                            new_listings.append({
+                                "item_id": item_id,
+                                "url": data["url"],
+                                "price": data["price"],
+                                "old_price": existing.last_price,
+                                "type": "price_change"
+                            })
+                        else:
+                            existing.last_seen = datetime.now()
+                            existing.accessed_time = datetime.now()
+                    else:
+                        # New listing
+                        logger.info(f"New listing found: {item_id}")
+                        now = datetime.now()
+
+                        new_listing = Listing(
+                            item_id=item_id,
+                            url=data["url"],
+                            listing_type=ListingType.selling,
+                            price=data["price"],
+                            last_price=None,
+                            is_price_per_sqm=data.get("is_price_per_sqm", False),
+                            location=data.get("location"),
+                            first_seen=now,
+                            last_seen=now,
+                            accessed_time=now
+                        )
+
+                        await db_client.insert_listing(session, new_listing)
 
                         new_listings.append({
                             "item_id": item_id,
                             "url": data["url"],
                             "price": data["price"],
-                            "old_price": existing.last_price,
-                            "type": "price_change"
+                            "old_price": None,
+                            "type": "new",
+                            "is_price_per_sqm": data.get("is_price_per_sqm", False),  # NEW
+                            "location": data.get("location"),  # NEW
                         })
-                    else:
-                        existing.last_seen = datetime.now()
-                        existing.accessed_time = datetime.now()
-                else:
-                    # New listing
-                    logger.info(f"New listing found: {item_id}")
-                    now = datetime.now()
 
-                    new_listing = Listing(
-                        item_id=item_id,
-                        url=data["url"],
-                        listing_type=ListingType.selling,
-                        price=data["price"],
-                        last_price=None,
-                        is_price_per_sqm=data.get("is_price_per_sqm", False),
-                        location=data.get("location"),
-                        first_seen=now,
-                        last_seen=now,
-                        accessed_time=now
-                    )
+                await session.commit()
 
-                    db_session.add(new_listing)
+                if not has_more or page_num >= 5:
+                    break
 
-                    new_listings.append({
-                        "item_id": item_id,
-                        "url": data["url"],
-                        "price": data["price"],
-                        "old_price": None,
-                        "type": "new",
-                        "is_price_per_sqm": data.get("is_price_per_sqm", False),  # NEW
-                        "location": data.get("location"),  # NEW
-                    })
+                page_num += 1
+                await asyncio.sleep(10)  # Longer delay between pages
 
-            await db_session.commit()
-
-            if not has_more or page_num >= 5:
-                break
-
-            page_num += 1
-            await asyncio.sleep(10)  # Longer delay between pages
-
-    finally:
-        await browser_page.close()
+        finally:
+            await browser_page.close()
 
     return new_listings
 
@@ -130,14 +129,12 @@ async def crawl(db_client):
             for idx, page_url in enumerate(urls, 1):
                 logger.info(f"Processing URL {idx}/{len(urls)}")
 
-                session_factory = db_client.async_session_factory()
-                async with session_factory() as session:
-                    new_listings = await scrape_url(browser, page_url, session)
+                new_listings = await scrape_url(browser, page_url, db_client)
 
-                    if new_listings:
-                        send_discord_notifications(new_listings)
-                    else:
-                        logger.info("No new listings or changes found")
+                if new_listings:
+                    send_discord_notifications(new_listings)
+                else:
+                    logger.info("No new listings or changes found")
 
                 # Small delay between URLs
                 await asyncio.sleep(5)
