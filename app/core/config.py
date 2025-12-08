@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class DatabaseConfig(BaseModel):
     path: str
+    auto_flush: bool = True
 
 
 class DiscordConfig(BaseModel):

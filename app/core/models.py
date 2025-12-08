@@ -45,3 +45,11 @@ class Listing(Base):
 
     def __repr__(self):
         return f"<Listing(id={self.item_id}, price={self.price}, type={self.listing_type.value})>"
+
+
+class ConfigState(Base):
+    __tablename__ = "config_state"
+
+    id = Column(Integer, primary_key=True)
+    url_hash = Column(String, nullable=False)
+    updated_at = Column(DateTime, nullable=False)

@@ -1,5 +1,7 @@
 import threading
 from asyncio import current_task
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -10,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy import select
 
 from app.core.logger import AppLogger
-from app.core.models import meta, Listing
+from app.core.models import meta, Listing, ConfigState
 
 logger = AppLogger(name="database").get_logger()
 
@@ -106,3 +108,34 @@ class DatabaseClient:
             deleted_count = result.rowcount
             logger.info(f"Successfully flushed {deleted_count} listings from database.")
             return deleted_count
+
+    async def get_url_hash(self):
+        """Get the stored URL configuration hash."""
+        session_factory = self.async_session_factory()
+        async with session_factory() as session:
+
+            result = await session.execute(select(ConfigState))
+            config_state = result.scalar_one_or_none()
+
+            return config_state.url_hash if config_state else None
+
+    async def set_url_hash(self, url_hash: str):
+        """Store the URL configuration hash."""
+        session_factory = self.async_session_factory()
+        async with session_factory() as session:
+
+            result = await session.execute(select(ConfigState))
+            config_state = result.scalar_one_or_none()
+
+            if config_state:
+                config_state.url_hash = url_hash
+                config_state.updated_at = datetime.now()
+            else:
+                config_state = ConfigState(
+                    url_hash=url_hash,
+                    updated_at=datetime.now()
+                )
+                session.add(config_state)
+
+            await session.commit()
+            logger.info(f"Stored URL hash: {url_hash}")

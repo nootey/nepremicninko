@@ -1,6 +1,7 @@
 # Database Configuration
 database:
   path: ./storage/db/nepremicninko.sqlite
+  auto_flush: true
 
 # Discord Configuration
 discord:

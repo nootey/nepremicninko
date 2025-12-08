@@ -12,6 +12,7 @@ You need to set up a config file `config.yaml` in project root.
 An `config.example.yaml` file is provided, all you need to do is input your Discord webhook, 
 everything else has reasonable defaults.
 
+A `auto_flush` flag is included in the config, which will clear the database upon detecting a change in any URL.
 
 Fill out the `urls:` field and define your search parameters.
 You can use multiple URLs, each in a new line
