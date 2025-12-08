@@ -2,7 +2,7 @@ import asyncio
 import time
 
 import pytz
-from apscheduler.events import EVENT_JOB_ERROR, JobExecutionEvent, EVENT_JOB_EXECUTED
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, JobExecutionEvent
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.core.config import config
