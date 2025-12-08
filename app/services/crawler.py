@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import sys
 from datetime import datetime
+
 from playwright.async_api import async_playwright
 
 from app.core.config import config

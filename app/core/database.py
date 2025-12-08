@@ -2,6 +2,7 @@ import threading
 from asyncio import current_task
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -9,10 +10,9 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy import select
 
 from app.core.logger import AppLogger
-from app.core.models import meta, Listing, ConfigState
+from app.core.models import ConfigState, Listing, meta
 
 logger = AppLogger(name="database").get_logger()
 
@@ -89,7 +89,7 @@ class DatabaseClient:
         session_factory = self.async_session_factory()
         async with session_factory() as session:
             # Count existing records
-            from sqlalchemy import func, delete
+            from sqlalchemy import delete, func
             count_result = await session.execute(
                 func.count(Listing.item_id)
             )
