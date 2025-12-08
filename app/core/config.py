@@ -1,23 +1,39 @@
-from typing import Literal
+from pathlib import Path
+import yaml
+from pydantic import BaseModel, Field
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class DatabaseConfig(BaseModel):
+    path: str
 
 
-class Config(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_ignore_empty=True,
-        extra="ignore",
-    )
-    ENVIRONMENT: Literal["local", "staging", "production"] = "local"
-    PROJECT_NAME: str
-    RELEASE: bool
+class DiscordConfig(BaseModel):
+    webhook_url: str
 
-    DB_PATH: str
-    DISCORD_WEBHOOK_URL: str
 
-    SCHEDULER_ENABLED: bool = True
-    SCHEDULER_INTERVAL_MINUTES: int
-    SCHEDULER_TIMEZONE: str
+class SchedulerConfig(BaseModel):
+    enabled: bool = True
+    interval_minutes: int
+    timezone: str
 
-config = Config() # type: ignore
+
+class Config(BaseModel):
+    database: DatabaseConfig
+    discord: DiscordConfig
+    scheduler: SchedulerConfig
+    urls: list[str] = Field(default_factory=list)
+
+    @classmethod
+    def from_yaml(cls, path: str | Path = "config.yaml") -> "Config":
+        config_path = Path(path)
+
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {config_path}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        return cls(**data)
+
+# Load the configuration
+config = Config.from_yaml()

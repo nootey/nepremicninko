@@ -14,12 +14,12 @@ async def main():
     db_client = None
     try:
         # Ensure database directory exists
-        db_path = Path(config.DB_PATH)
+        db_path = Path(config.database.path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(f"Database directory ready: {db_path.parent}")
 
         # Initialize database client
-        db_client = DatabaseClient(url=f"sqlite+aiosqlite:///{config.DB_PATH}")
+        db_client = DatabaseClient(url=f"sqlite+aiosqlite:///{config.database.path}")
 
         # Create tables if they don't exist
         await db_client.create_models()
@@ -31,7 +31,7 @@ async def main():
         logger.info("Initial scrape completed")
 
         # Start scheduler if enabled
-        if config.SCHEDULER_ENABLED:
+        if config.scheduler.enabled:
             logger.info("Starting scheduler ...")
             await start_scheduler(db_client)
         else:

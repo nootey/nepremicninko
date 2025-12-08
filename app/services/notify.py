@@ -58,7 +58,7 @@ def send_discord_embed(listing_data):
     headers = {"Content-Type": "application/json"}
 
     try:
-        response = requests.post(config.DISCORD_WEBHOOK_URL, json=payload, headers=headers)
+        response = requests.post(config.discord.webhook_url, json=payload, headers=headers)
 
         if response.status_code not in (200, 204):
             logger.warning(
@@ -72,7 +72,7 @@ def send_discord_embed(listing_data):
 
 
 def send_discord_notifications(listings):
-    if not config.DISCORD_WEBHOOK_URL:
+    if not config.discord.webhook_url:
         logger.warning("Discord webhook URL not configured, skipping notifications")
         return
 

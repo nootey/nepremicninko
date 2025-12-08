@@ -1,0 +1,19 @@
+# Database Configuration
+database:
+  path: ./storage/db/nepremicninko.sqlite
+
+# Discord Configuration
+discord:
+  webhook_url: https://discord.com/api/webhooks/...
+
+# Scheduler Configuration
+scheduler:
+  enabled: true
+  interval_minutes: 3
+  timezone: Europe/Ljubljana
+
+# URLs to scrape
+urls:
+  - url_1
+  - url_2
+  - ...

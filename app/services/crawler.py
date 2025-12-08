@@ -1,26 +1,26 @@
 import asyncio
+import sys
 from datetime import datetime
-from pathlib import Path
-
 from playwright.async_api import async_playwright
 from sqlalchemy import select
 
+from app.core.config import config
 from app.core.logger import AppLogger
 from app.core.models import Listing, ListingType
 from app.services.notify import send_discord_notifications
 from app.services.parse import parse_page
 
+
 logger = AppLogger(name="crawler").get_logger()
 
 async def read_urls():
-    path = Path("config/urls.txt")
+    urls = config.urls
 
-    if not path.exists():
-        logger.error("urls.txt not found in project root!")
-        return []
-
-    with open(path, encoding="utf-8") as file:
-        return [line.strip() for line in file.readlines() if line.strip()]
+    if not urls:
+        logger.error("No URLs configured in config.yaml")
+        sys.exit(1)
+    else:
+        return urls
 
 async def scrape_url(browser, page_url, db_session):
     logger.info(f"Scraping: {page_url}")

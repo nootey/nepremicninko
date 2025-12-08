@@ -32,12 +32,12 @@ async def start_scheduler(db_client) -> None:
     scheduler = AsyncIOScheduler()
     scheduler.add_listener(handle_job_error, EVENT_JOB_ERROR)
 
-    timezone = pytz.timezone(config.SCHEDULER_TIMEZONE)
+    timezone = pytz.timezone(config.scheduler.timezone)
 
     scheduler.add_job(
         run_scrape_job,
         'cron',
-        minute=f"*/{config.SCHEDULER_INTERVAL_MINUTES}",
+        minute=f"*/{config.scheduler.interval_minutes}",
         timezone=timezone,
         args=[db_client]
     )

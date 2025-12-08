@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 /storage/
 .idea
-/config/urls.txt
+config.yaml
