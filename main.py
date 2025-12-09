@@ -9,6 +9,7 @@ from app.services.scheduler import start_scheduler
 
 logger = AppLogger(name="app").get_logger()
 
+
 async def main():
     logger.info("Starting application")
     db_client = None
@@ -40,11 +41,10 @@ async def main():
         else:
             logger.info("Scheduler disabled, exiting after initial scrape")
 
-        logger.info("Crawler finished successfully")
-
     except Exception as e:
         logger.error(f"Application failure: {e}", exc_info=True)
         raise
+
 
 if __name__ == "__main__":
     asyncio.run(main())

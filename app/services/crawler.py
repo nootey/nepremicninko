@@ -13,6 +13,7 @@ from app.services.parse import parse_page
 
 logger = AppLogger(name="crawler").get_logger()
 
+
 async def read_urls():
     urls = config.urls
 
@@ -21,6 +22,7 @@ async def read_urls():
         sys.exit(1)
     else:
         return urls
+
 
 def get_url_hash(urls: list[str]) -> str:
     """Generate a hash of the URL list to detect changes."""
@@ -55,15 +57,14 @@ async def check_and_handle_url_changes(urls: list[str], db_client) -> bool:
     logger.debug("URL configuration unchanged")
     return False
 
+
 async def scrape_url(browser, page_url, db_client):
     logger.info(f"Scraping: {page_url}")
 
     new_listings = []
     page_num = 1
 
-    browser_page = await browser.new_page(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    )
+    browser_page = await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
     session_factory = db_client.async_session_factory()
     async with session_factory() as session:
@@ -79,59 +80,67 @@ async def scrape_url(browser, page_url, db_client):
 
                 # Check each listing against database
                 for item_id, data in listings.items():
+                    try:
+                        existing = await db_client.get_listing_by_id(session, item_id)
 
-                    existing = await db_client.get_listing_by_id(session, item_id)
+                        if existing:
+                            # Check for price change
+                            if existing.price != data["price"]:
+                                logger.info(f"Price change detected for {item_id}: {existing.price} -> {data['price']}")
+                                existing.last_price = existing.price
+                                existing.price = data["price"]
+                                existing.last_seen = datetime.now()
+                                existing.accessed_time = datetime.now()
 
-                    if existing:
-                        # Check for price change
-                        if existing.price != data["price"]:
-                            logger.info(f"Price change detected for {item_id}: {existing.price} -> {data['price']}")
-                            existing.last_price = existing.price
-                            existing.price = data["price"]
-                            existing.last_seen = datetime.now()
-                            existing.accessed_time = datetime.now()
-
-                            new_listings.append({
-                                "item_id": item_id,
-                                "url": data["url"],
-                                "price": data["price"],
-                                "old_price": existing.last_price,
-                                "type": "price_change"
-                            })
+                                new_listings.append(
+                                    {
+                                        "item_id": item_id,
+                                        "url": data["url"],
+                                        "price": data["price"],
+                                        "old_price": existing.last_price,
+                                        "type": "price_change",
+                                    }
+                                )
+                            else:
+                                existing.last_seen = datetime.now()
+                                existing.accessed_time = datetime.now()
                         else:
-                            existing.last_seen = datetime.now()
-                            existing.accessed_time = datetime.now()
-                    else:
-                        # New listing
-                        logger.info(f"New listing found: {item_id}")
-                        now = datetime.now()
+                            # New listing
+                            logger.info(f"New listing found: {item_id}")
+                            now = datetime.now()
 
-                        new_listing = Listing(
-                            item_id=item_id,
-                            url=data["url"],
-                            listing_type=ListingType.selling,
-                            price=data["price"],
-                            last_price=None,
-                            is_price_per_sqm=data.get("is_price_per_sqm", False),
-                            location=data.get("location"),
-                            first_seen=now,
-                            last_seen=now,
-                            accessed_time=now
-                        )
+                            new_listing = Listing(
+                                item_id=item_id,
+                                url=data["url"],
+                                listing_type=ListingType.selling,
+                                price=data["price"],
+                                last_price=None,
+                                is_price_per_sqm=data.get("is_price_per_sqm", False),
+                                location=data.get("location"),
+                                first_seen=now,
+                                last_seen=now,
+                                accessed_time=now,
+                            )
 
-                        await db_client.insert_listing(session, new_listing)
+                            await db_client.insert_listing(session, new_listing)
 
-                        new_listings.append({
-                            "item_id": item_id,
-                            "url": data["url"],
-                            "price": data["price"],
-                            "old_price": None,
-                            "type": "new",
-                            "is_price_per_sqm": data.get("is_price_per_sqm", False),  # NEW
-                            "location": data.get("location"),  # NEW
-                        })
+                            new_listings.append(
+                                {
+                                    "item_id": item_id,
+                                    "url": data["url"],
+                                    "price": data["price"],
+                                    "old_price": None,
+                                    "type": "new",
+                                    "is_price_per_sqm": data.get("is_price_per_sqm", False),  # NEW
+                                    "location": data.get("location"),  # NEW
+                                }
+                            )
 
-                await session.commit()
+                        await session.commit()
+                    except Exception as e:
+                        await session.rollback()
+                        logger.error(f"Failed to save listing {item_id}: {e}", exc_info=True)
+                        continue
 
                 if not has_more or page_num >= 5:
                     break
@@ -139,13 +148,16 @@ async def scrape_url(browser, page_url, db_client):
                 page_num += 1
                 await asyncio.sleep(10)  # Longer delay between pages
 
+        except Exception as e:
+            logger.error(f"Error during scrape: {e}", exc_info=True)
+
         finally:
             await browser_page.close()
 
     return new_listings
 
-async def crawl(db_client):
 
+async def crawl(db_client):
     logger.info("Starting crawler ...")
 
     # Read URL configuration
