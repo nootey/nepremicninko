@@ -131,8 +131,8 @@ async def scrape_url(browser, page_url, db_client):
                                     "price": data["price"],
                                     "old_price": None,
                                     "type": "new",
-                                    "is_price_per_sqm": data.get("is_price_per_sqm", False),  # NEW
-                                    "location": data.get("location"),  # NEW
+                                    "is_price_per_sqm": data.get("is_price_per_sqm", False),
+                                    "location": data.get("location"),
                                 }
                             )
 
@@ -149,7 +149,7 @@ async def scrape_url(browser, page_url, db_client):
                 await asyncio.sleep(10)  # Longer delay between pages
 
         except Exception as e:
-            logger.error(f"Error during scrape: {e}", exc_info=True)
+            logger.error(f"Error during scrape_url: {e}", exc_info=True)
             if config.discord.notify_on_error:
                 send_discord_error(str(e), page_url)
 
@@ -190,6 +190,10 @@ async def crawl(db_client):
                 # Small delay between URLs
                 await asyncio.sleep(5)
 
+        except Exception as e:
+            logger.error(f"Error during crawl: {e}", exc_info=True)
+            if config.discord.notify_on_error:
+                send_discord_error(str(e), page_url)
         finally:
             await browser.close()
 

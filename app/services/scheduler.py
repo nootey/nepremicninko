@@ -12,6 +12,7 @@ from app.services.crawler import crawl
 
 logger = AppLogger(name="scheduler").get_logger()
 
+
 async def run_scrape_job():
     start = time.time()
     logger.info("Scheduled scrape triggered")
@@ -32,8 +33,8 @@ async def run_scrape_job():
         if db_client:
             await db_client.cleanup()
 
-async def start_scheduler() -> None:
 
+async def start_scheduler() -> None:
     scheduler = AsyncIOScheduler()
 
     def handle_job_executed(event: JobExecutionEvent):
@@ -50,17 +51,13 @@ async def start_scheduler() -> None:
     timezone = pytz.timezone(config.scheduler.timezone)
 
     scheduler.add_job(
-        run_scrape_job,
-        'interval',
-        minutes=config.scheduler.interval_minutes,
-        timezone=timezone,
-        max_instances=1
+        run_scrape_job, "interval", minutes=config.scheduler.interval_minutes, timezone=timezone, max_instances=1
     )
 
     scheduler.start()
 
     next_run = scheduler.get_jobs()[0].next_run_time
-    logger.info(f"Scheduler started — next run at: {next_run.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    logger.info(f"Scheduler started - next run at: {next_run.strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
     try:
         # Keep the scheduler running
