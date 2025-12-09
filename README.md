@@ -17,6 +17,8 @@ A `auto_flush` flag is included in the config, which will clear the database upo
 Fill out the `urls:` field and define your search parameters.
 You can use multiple URLs, each in a new line
 
+You can also enable notifications about errors, that may happen on scrapes, via the `notify_on_error` field in the config.
+
 Example url: 
 ```yaml
 urls:

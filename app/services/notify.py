@@ -7,7 +7,6 @@ logger = AppLogger(name="discord").get_logger()
 
 
 def send_discord_embed(listing_data):
-
     # Determine embed color and title based on type
     if listing_data["type"] == "price_change":
         color = 16776960  # Yellow for price changes
@@ -29,20 +28,12 @@ def send_discord_embed(listing_data):
             price_field_value = f"€{listing_data['price']:,.2f}"
 
     fields = [
-        {
-            "name": "💵 Price",
-            "value": price_field_value,
-            "inline": True
-        },
+        {"name": "💵 Price", "value": price_field_value, "inline": True},
     ]
 
     # Add location if available
     if listing_data.get("location"):
-        fields.append({
-            "name": "📍 Location",
-            "value": listing_data["location"],
-            "inline": True
-        })
+        fields.append({"name": "📍 Location", "value": listing_data["location"], "inline": True})
 
     embed = {
         "title": title,
@@ -61,9 +52,7 @@ def send_discord_embed(listing_data):
         response = requests.post(config.discord.webhook_url, json=payload, headers=headers)
 
         if response.status_code not in (200, 204):
-            logger.warning(
-                f"Failed to send embed to Discord: {response.status_code} - {response.text}"
-            )
+            logger.warning(f"Failed to send embed to Discord: {response.status_code} - {response.text}")
         else:
             logger.info(f"Discord embed sent successfully for {listing_data['item_id']}")
 
@@ -80,3 +69,35 @@ def send_discord_notifications(listings):
 
     for listing in listings:
         send_discord_embed(listing)
+
+
+def send_discord_error(error_message: str, page_url: str = None):
+    description = f"```\n{error_message}\n```"
+
+    fields = []
+    if page_url:
+        fields.append({"name": "🔗 URL", "value": page_url, "inline": False})
+
+    embed = {
+        "title": "⚠️ Scraper Error",
+        "description": description,
+        "color": 15158332,
+        "fields": fields,
+        "footer": {
+            "text": "nepremicninko",
+        },
+    }
+
+    payload = {"embeds": [embed]}
+    headers = {"Content-Type": "application/json"}
+
+    try:
+        response = requests.post(config.discord.webhook_url, json=payload, headers=headers)
+
+        if response.status_code not in (200, 204):
+            logger.warning(f"Failed to send error embed to Discord: {response.status_code} - {response.text}")
+        else:
+            logger.info("Discord error embed sent successfully")
+
+    except Exception as e:
+        logger.exception(f"Exception occurred while sending error embed to Discord: {e}")

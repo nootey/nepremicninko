@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright
 from app.core.config import config
 from app.core.logger import AppLogger
 from app.core.models import Listing, ListingType
-from app.services.notify import send_discord_notifications
+from app.services.notify import send_discord_error, send_discord_notifications
 from app.services.parse import parse_page
 
 logger = AppLogger(name="crawler").get_logger()
@@ -150,6 +150,8 @@ async def scrape_url(browser, page_url, db_client):
 
         except Exception as e:
             logger.error(f"Error during scrape: {e}", exc_info=True)
+            if config.discord.notify_on_error:
+                send_discord_error(str(e), page_url)
 
         finally:
             await browser_page.close()

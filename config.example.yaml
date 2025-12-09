@@ -6,6 +6,7 @@ database:
 # Discord Configuration
 discord:
   webhook_url: https://discord.com/api/webhooks/...
+  notify_on_error: false
 
 # Scheduler Configuration
 scheduler:

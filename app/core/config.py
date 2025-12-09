@@ -11,6 +11,7 @@ class DatabaseConfig(BaseModel):
 
 class DiscordConfig(BaseModel):
     webhook_url: str
+    notify_on_error: bool = False
 
 
 class SchedulerConfig(BaseModel):
@@ -36,6 +37,7 @@ class Config(BaseModel):
             data = yaml.safe_load(f)
 
         return cls(**data)
+
 
 # Load the configuration
 config = Config.from_yaml()
