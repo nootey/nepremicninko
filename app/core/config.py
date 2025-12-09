@@ -1,7 +1,11 @@
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.logger import AppLogger
+
+logger = AppLogger(name="config").get_logger()
 
 
 class DatabaseConfig(BaseModel):
@@ -18,6 +22,17 @@ class SchedulerConfig(BaseModel):
     enabled: bool = True
     interval_minutes: int = 3
     timezone: str = "Europe/Ljubljana"
+
+    @field_validator("interval_minutes")
+    @classmethod
+    def validate_interval(cls, v: int) -> int:
+        if v < 3:
+            logger.warning(
+                f"Scheduler interval ({v} minutes) is too short. "
+                f"Minimum interval is 3 minutes. Using 3 minutes instead."
+            )
+            return 3
+        return v
 
 
 class Config(BaseModel):
