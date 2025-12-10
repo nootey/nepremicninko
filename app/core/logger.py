@@ -1,9 +1,9 @@
 import logging
-from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 from pythonjsonlogger import jsonlogger
+
 
 class AppLogger:
     def __init__(
