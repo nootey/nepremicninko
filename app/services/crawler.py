@@ -63,19 +63,41 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
     new_listings = []
     page_num = 1
 
-    browser_page = await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+    async def create_browser_page():
+        """Helper to create new browser page with consistent user agent."""
+        return await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+
+    browser_page = await create_browser_page()
 
     session_factory = db_client.async_session_factory()
     async with session_factory() as session:
         try:
             while True:
-                current_url = f"{page_url}{page_num}/" if page_num > 1 else page_url
+
+                # Build URL with pagination
+                if page_num == 1:
+                    current_url = page_url
+                else:
+                    # Split URL into base and query string
+                    if '?' in page_url:
+                        base_url, query_string = page_url.split('?', 1)
+                        current_url = f"{base_url}{page_num}/?{query_string}"
+                    else:
+                        current_url = f"{page_url}{page_num}/"
+
+                logger.info(f"Navigating to page {page_num}: {current_url}")
 
                 await browser_page.goto(current_url, wait_until="domcontentloaded")
                 await asyncio.sleep(2)
 
-                listings, has_more = await parse_page(browser_page, logger.getChild("parser"))
+                listings, has_more = await parse_page(browser_page, logger)
                 logger.info(f"Found {len(listings)} listings on page {page_num}")
+
+                # If no listings found, break
+                if not listings:
+                    logger.warning(f"No listings found on page {page_num}, stopping pagination")
+                    break
 
                 # Check each listing against database
                 for item_id, data in listings.items():
@@ -143,6 +165,11 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
 
                 if not has_more or page_num >= 5:
                     break
+
+                # Close and reopen page before going to next page
+                logger.debug("Closing and reopening browser page for next page ...")
+                await browser_page.close()
+                browser_page = await create_browser_page()
 
                 page_num += 1
                 await asyncio.sleep(10)  # Longer delay between pages
