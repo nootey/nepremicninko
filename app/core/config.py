@@ -7,6 +7,17 @@ from pydantic import BaseModel, Field, field_validator
 class AppConfig(BaseModel):
     max_pages_per_url: int = 5
 
+    @field_validator("max_pages_per_url")
+    @classmethod
+    def validate_max_pages(cls, v: int) -> int:
+        if v < 1:
+            print(
+                f"WARNING: max_pages_per_url ({v}) must be at least 1. "
+                f"Using 1 instead."
+            )
+            return 1
+        return v
+
 class DatabaseConfig(BaseModel):
     path: str = "./storage/db/nepremicninko.sqlite"
     auto_flush: bool = True
