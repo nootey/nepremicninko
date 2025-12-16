@@ -4,6 +4,9 @@ import yaml
 from pydantic import BaseModel, Field, field_validator
 
 
+class AppConfig(BaseModel):
+    max_pages_per_url: int = 5
+
 class DatabaseConfig(BaseModel):
     path: str = "./storage/db/nepremicninko.sqlite"
     auto_flush: bool = True
@@ -32,6 +35,7 @@ class SchedulerConfig(BaseModel):
 
 
 class Config(BaseModel):
+    app: AppConfig
     database: DatabaseConfig
     discord: DiscordConfig
     scheduler: SchedulerConfig

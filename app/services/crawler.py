@@ -163,7 +163,8 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
                         logger.error(f"Failed to save listing {item_id}: {e}", exc_info=True)
                         continue
 
-                if not has_more or page_num >= 5:
+                if not has_more or page_num >= config.app.max_pages_per_url:
+                    logger.warning(f"Available pages exceed configured maximum of: {config.app.max_pages_per_url}, stopping pagination")
                     break
 
                 # Close and reopen page before going to next page
