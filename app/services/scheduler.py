@@ -3,7 +3,7 @@ import time
 from logging import Logger
 
 import pytz
-from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, JobExecutionEvent
+from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MAX_INSTANCES, JobExecutionEvent
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.core.config import config
@@ -36,6 +36,7 @@ async def start_scheduler(logger: Logger) -> None:
 
     s_logger = logger.getChild("scheduler")
     scheduler = AsyncIOScheduler()
+    last_job_end_time: float | None = None  # Track when last job finished
 
     def handle_job_executed(event: JobExecutionEvent):
         job = scheduler.get_job(event.job_id)
@@ -45,13 +46,36 @@ async def start_scheduler(logger: Logger) -> None:
     def handle_job_error(event: JobExecutionEvent):
         s_logger.error(f"Scheduled job failed: {event.exception}", exc_info=True)
 
+    def handle_max_instances(event: JobExecutionEvent):
+        s_logger.warning("Scrape job still running, skipping this interval")
+
+    async def run_scrape_job_with_cooldown(logger: Logger):
+        nonlocal last_job_end_time
+
+        # Check if we need to wait for cooldown
+        if last_job_end_time is not None:
+            time_since_last = time.time() - last_job_end_time
+            cooldown_seconds = 60  # 1 minute minimum
+
+            if time_since_last < cooldown_seconds:
+                wait_time = cooldown_seconds - time_since_last
+                s_logger.info(f"Cooldown active, waiting {wait_time:.1f}s before starting job")
+                await asyncio.sleep(wait_time)
+
+        # Run the job
+        await run_scrape_job(logger)
+
+        # Update last completion time
+        last_job_end_time = time.time()
+
     scheduler.add_listener(handle_job_error, EVENT_JOB_ERROR)
     scheduler.add_listener(handle_job_executed, EVENT_JOB_EXECUTED)
+    scheduler.add_listener(handle_max_instances, EVENT_JOB_MAX_INSTANCES)
 
     timezone = pytz.timezone(config.scheduler.timezone)
 
     scheduler.add_job(
-        run_scrape_job,
+        run_scrape_job_with_cooldown,
         "interval",
         args=[s_logger],
         minutes=config.scheduler.interval_minutes,
