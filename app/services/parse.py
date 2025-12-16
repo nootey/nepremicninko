@@ -1,10 +1,9 @@
+from logging import Logger
+
 from playwright.async_api import Locator, Page
 
-from app.core.logger import AppLogger
 
-logger = AppLogger(name="parser").get_logger()
-
-async def parse_page(browser_page: Page) -> tuple[dict, bool]:
+async def parse_page(browser_page: Page, logger: Logger) -> tuple[dict, bool]:
 
     logger.debug(f"Parsing page: {browser_page.url}")
 
@@ -34,7 +33,7 @@ async def parse_page(browser_page: Page) -> tuple[dict, bool]:
     for idx, result in enumerate(results):
         logger.info(f"Processing listing {idx + 1}/{len(results)} ...")
         try:
-            item_id, data = await parse_result(result, idx)
+            item_id, data = await parse_result(result, idx, logger)
             extracted_data[item_id] = data
         except Exception as e:
             logger.warning(f"✗ Error parsing listing {idx + 1}: {e}")
@@ -48,7 +47,7 @@ async def parse_page(browser_page: Page) -> tuple[dict, bool]:
 
     return extracted_data, more_pages
 
-async def parse_result(item: Locator, idx: int) -> tuple[str, dict]:
+async def parse_result(item: Locator, idx: int, logger: Logger) -> tuple[str, dict]:
 
     try:
         # Get the details section

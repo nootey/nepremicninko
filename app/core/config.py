@@ -3,10 +3,6 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-from app.core.logger import AppLogger
-
-logger = AppLogger(name="config").get_logger()
-
 
 class DatabaseConfig(BaseModel):
     path: str = "./storage/db/nepremicninko.sqlite"
@@ -27,8 +23,8 @@ class SchedulerConfig(BaseModel):
     @classmethod
     def validate_interval(cls, v: int) -> int:
         if v < 3:
-            logger.warning(
-                f"Scheduler interval ({v} minutes) is too short. "
+            print(
+                f"WARNING: Scheduler interval ({v} minutes) is too short. "
                 f"Minimum interval is 3 minutes. Using 3 minutes instead."
             )
             return 3

@@ -1,6 +1,7 @@
 import threading
 from asyncio import current_task
 from datetime import datetime
+from logging import Logger
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
@@ -11,33 +12,32 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.logger import AppLogger
 from app.core.models import ConfigState, Listing, meta
 
-logger = AppLogger(name="database").get_logger()
 
 class DatabaseClient:
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, logger: Logger):
         self.db_connections = threading.local()
         self.url = url
+        self.logger = logger.getChild("database")
 
     def async_engine(self) -> AsyncEngine:
         if not hasattr(self.db_connections, "engine"):
-            logger.debug("Starting engine.")
+            self.logger.debug("Starting engine.")
             self.db_connections.engine = create_async_engine(self.url)
-            logger.debug("Creating database engine finished.")
+            self.logger.debug("Creating database engine finished.")
         return self.db_connections.engine
 
     def async_session_factory(self) -> async_sessionmaker:
-        logger.debug("Starting session factory.")
+        self.logger.debug("Starting session factory.")
         if not hasattr(self.db_connections, "session_factory"):
             engine = self.async_engine()
             self.db_connections.session_factory = async_sessionmaker(bind=engine)
         return self.db_connections.session_factory
 
     def async_scoped_session(self) -> async_scoped_session[AsyncSession]:
-        logger.debug("Getting scoped session.")
+        self.logger.debug("Getting scoped session.")
         if not hasattr(self.db_connections, "scoped_session"):
             session_factory = self.async_session_factory()
             self.db_connections.scoped_session = async_scoped_session(
@@ -46,16 +46,16 @@ class DatabaseClient:
         return self.db_connections.scoped_session
 
     async def cleanup(self):
-        logger.debug("Cleaning database engine.")
+        self.logger.debug("Cleaning database engine.")
 
         await self.db_connections.engine.dispose()
-        logger.debug("Cleaning database finished.")
+        self.logger.debug("Cleaning database finished.")
 
     async def create_models(self):
-        logger.debug("Creating ORM modules.")
+        self.logger.debug("Creating ORM modules.")
         async with self.async_engine().begin() as conn:
             await conn.run_sync(meta.create_all)
-        logger.debug("Finished creating ORM modules.")
+        self.logger.debug("Finished creating ORM modules.")
 
     async def insert_listing(self, session: AsyncSession, listing: Listing):
         session.add(listing)
@@ -84,7 +84,7 @@ class DatabaseClient:
 
     async def flush_listings(self):
 
-        logger.info("Flushing all listings from database ...")
+        self.logger.info("Flushing all listings from database ...")
 
         session_factory = self.async_session_factory()
         async with session_factory() as session:
@@ -96,7 +96,7 @@ class DatabaseClient:
             count = count_result.scalar()
 
             if count == 0:
-                logger.info("No listings to flush.")
+                self.logger.info("No listings to flush.")
                 return 0
 
             # Delete all listings
@@ -106,7 +106,7 @@ class DatabaseClient:
             await session.commit()
 
             deleted_count = result.rowcount
-            logger.info(f"Successfully flushed {deleted_count} listings from database.")
+            self.logger.info(f"Successfully flushed {deleted_count} listings from database.")
             return deleted_count
 
     async def get_url_hash(self):
@@ -138,4 +138,4 @@ class DatabaseClient:
                 session.add(config_state)
 
             await session.commit()
-            logger.info(f"Stored URL hash: {url_hash}")
+            self.logger.info(f"Stored URL hash: {url_hash}")

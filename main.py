@@ -7,12 +7,13 @@ from app.core.logger import AppLogger
 from app.services.crawler import crawl
 from app.services.scheduler import start_scheduler
 
-logger = AppLogger(name="app").get_logger()
-
 
 async def main():
+
+    logger = AppLogger(name="app").get_logger()
     logger.info("Starting application")
     db_client = None
+
     try:
         # Ensure database directory exists
         db_path = Path(config.database.path)
@@ -20,7 +21,7 @@ async def main():
         logger.info(f"Database directory ready: {db_path.parent}")
 
         # Initialize database client
-        db_client = DatabaseClient(url=f"sqlite+aiosqlite:///{config.database.path}")
+        db_client = DatabaseClient(url=f"sqlite+aiosqlite:///{config.database.path}", logger=logger)
 
         # Create tables if they don't exist
         await db_client.create_models()
@@ -28,7 +29,7 @@ async def main():
 
         # Run initial scrape
         logger.info("Starting initial scrape ...")
-        await crawl(db_client)
+        await crawl(db_client, logger)
         logger.info("Initial scrape completed")
 
         # Close the connection
@@ -37,7 +38,7 @@ async def main():
         # Start scheduler if enabled
         if config.scheduler.enabled:
             logger.info("Starting scheduler ...")
-            await start_scheduler()
+            await start_scheduler(logger)
         else:
             logger.info("Scheduler disabled, exiting after initial scrape")
 

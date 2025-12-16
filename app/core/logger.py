@@ -1,5 +1,5 @@
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from datetime import datetime
 from pathlib import Path
 
 from pythonjsonlogger import jsonlogger
@@ -7,39 +7,29 @@ from pythonjsonlogger import jsonlogger
 
 class AppLogger:
     def __init__(
-        self,
-        name: str = __name__,
-        log_dir: str = "logs",
-        level: int = logging.INFO,
+            self,
+            name: str = __name__,
+            log_dir: str = "logs",
+            level: int = logging.INFO,
     ):
-        # Ensure log directory exists
         Path(log_dir).mkdir(parents=True, exist_ok=True)
+
+        today = datetime.now().strftime("%Y-%m-%d")
 
         self.logger = logging.getLogger(name)
         self.logger.setLevel(level)
-        self.logger.propagate = False  # avoid duplicate logs
+        self.logger.propagate = False
 
-        # Prevent duplicate handlers
         if not self.logger.handlers:
-            # Base file
-            log_file = Path(log_dir) / "app.log"
+            log_file = Path(log_dir) / f"app-{today}.log"
 
-            # --- File handler (JSON format)
-            file_handler = TimedRotatingFileHandler(
-                filename=log_file,
-                when="midnight",
-                interval=1,
-                backupCount=30,
-                encoding="utf-8",
-                utc=False,
-            )
-
-            file_handler.suffix = "%Y-%m-%d"
+            # File handler
+            file_handler = logging.FileHandler(filename=log_file, encoding="utf-8")
             file_formatter = jsonlogger.JsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s")
             file_handler.setFormatter(file_formatter)
             self.logger.addHandler(file_handler)
 
-            # --- Console handler (simple format)
+            # Console handler
             console_handler = logging.StreamHandler()
             console_formatter = logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s")
             console_handler.setFormatter(console_formatter)

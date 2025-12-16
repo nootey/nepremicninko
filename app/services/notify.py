@@ -1,14 +1,12 @@
 import time
+from logging import Logger
 
 import requests
 
 from app.core.config import config
-from app.core.logger import AppLogger
-
-logger = AppLogger(name="discord").get_logger()
 
 
-def send_discord_notifications(listings):
+def send_discord_notifications(listings, logger: Logger):
     if not config.discord.webhook_url:
         logger.warning("Discord webhook URL not configured, skipping notifications")
         return
@@ -18,14 +16,14 @@ def send_discord_notifications(listings):
     batch_size = 10
     for i in range(0, len(listings), batch_size):
         batch = listings[i : i + batch_size]
-        send_discord_batch(batch)
+        send_discord_batch(batch, logger)
 
         # Small delay between batches to avoid rate limits
         if i + batch_size < len(listings):
             time.sleep(1)
 
 
-def send_discord_batch(listings):
+def send_discord_batch(listings, logger: Logger):
     """Send multiple listings as embeds in a single message."""
     embeds = []
 
@@ -78,7 +76,7 @@ def send_discord_batch(listings):
         logger.exception(f"Exception occurred while sending batch to Discord: {e}")
 
 
-def send_discord_error(error_message: str, page_url: str = None):
+def send_discord_error(error_message: str, logger: Logger, page_url: str = None):
     description = f"```\n{error_message}\n```"
 
     fields = []
