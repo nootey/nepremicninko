@@ -1,10 +1,10 @@
+import re
 from logging import Logger
 
 from playwright.async_api import Locator, Page
 
 
 async def parse_page(browser_page: Page, logger: Logger) -> tuple[dict, bool]:
-
     logger.debug(f"Parsing page: {browser_page.url}")
 
     # Try to reject cookies if the button exists
@@ -47,8 +47,8 @@ async def parse_page(browser_page: Page, logger: Logger) -> tuple[dict, bool]:
 
     return extracted_data, more_pages
 
-async def parse_result(item: Locator, idx: int, logger: Logger) -> tuple[str, dict]:
 
+async def parse_result(item: Locator, idx: int, logger: Logger) -> tuple[str, dict]:
     try:
         # Get the details section
         details = item.locator('xpath=div/div[contains(@class, "property-details")]')
@@ -71,26 +71,38 @@ async def parse_result(item: Locator, idx: int, logger: Logger) -> tuple[str, di
 
         # Extract price
         price_meta = details.locator('xpath=meta[@itemprop="price"]')
-        is_price_per_sqm = False
 
         if await price_meta.count() > 0:
             price_str = await price_meta.get_attribute("content", timeout=5000)
             price = float(price_str)
-
-            # If price is less than 100, we can assume it's per m²
-            if price < 100:
-                is_price_per_sqm = True
-
         else:
             logger.warning(f"  No price found for {item_id}")
             price = 0.0
 
+        # Extract size
+        size_sqm = None
+        try:
+            property_list = details.locator('xpath=.//ul[@itemprop="disambiguatingDescription"]')
+            if await property_list.count() > 0:
+                list_text = await property_list.inner_text(timeout=5000)
+
+                size_match = re.search(r"(\d+(?:[.,]\d+)?)\s*m", list_text, re.IGNORECASE)
+                if size_match:
+                    size_str = size_match.group(1).replace(",", ".")
+                    size_sqm = float(size_str)
+                else:
+                    logger.warning(f"  No size match found in: {list_text}")
+            else:
+                logger.warning(f"  No property list found for {item_id}")
+        except Exception as e:
+            logger.error(f"  Could not extract size: {e}")
+
         data = {
             "url": f"https://www.nepremicnine.net{url}" if not url.startswith("http") else url,
             "price": price,
-            "is_price_per_sqm": is_price_per_sqm,
             "location": location,
             "title": title,
+            "size_sqm": size_sqm,
         }
 
         return item_id, data

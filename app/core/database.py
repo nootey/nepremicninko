@@ -16,7 +16,6 @@ from app.core.models import ConfigState, Listing, meta
 
 
 class DatabaseClient:
-
     def __init__(self, url: str, logger: Logger):
         self.db_connections = threading.local()
         self.url = url
@@ -40,9 +39,7 @@ class DatabaseClient:
         self.logger.debug("Getting scoped session.")
         if not hasattr(self.db_connections, "scoped_session"):
             session_factory = self.async_session_factory()
-            self.db_connections.scoped_session = async_scoped_session(
-                session_factory, scopefunc=current_task
-            )
+            self.db_connections.scoped_session = async_scoped_session(session_factory, scopefunc=current_task)
         return self.db_connections.scoped_session
 
     async def cleanup(self):
@@ -63,7 +60,6 @@ class DatabaseClient:
     async def get_listings(self, limit: int = None):
         session_factory = self.async_session_factory()
         async with session_factory() as session:
-
             query = select(Listing)
             if limit:
                 query = query.limit(limit)
@@ -74,25 +70,20 @@ class DatabaseClient:
             return listings
 
     async def get_listing_by_id(self, session: AsyncSession, item_id: str):
-
-        result = await session.execute(
-            select(Listing).where(Listing.item_id == item_id)
-        )
+        result = await session.execute(select(Listing).where(Listing.item_id == item_id))
         listing = result.scalar_one_or_none()
 
         return listing
 
     async def flush_listings(self):
-
         self.logger.info("Flushing all listings from database ...")
 
         session_factory = self.async_session_factory()
         async with session_factory() as session:
             # Count existing records
             from sqlalchemy import delete, func
-            count_result = await session.execute(
-                func.count(Listing.item_id)
-            )
+
+            count_result = await session.execute(func.count(Listing.item_id))
             count = count_result.scalar()
 
             if count == 0:
@@ -100,9 +91,7 @@ class DatabaseClient:
                 return 0
 
             # Delete all listings
-            result = await session.execute(
-                delete(Listing)
-            )
+            result = await session.execute(delete(Listing))
             await session.commit()
 
             deleted_count = result.rowcount
@@ -113,7 +102,6 @@ class DatabaseClient:
         """Get the stored URL configuration hash."""
         session_factory = self.async_session_factory()
         async with session_factory() as session:
-
             result = await session.execute(select(ConfigState))
             config_state = result.scalar_one_or_none()
 
@@ -123,7 +111,6 @@ class DatabaseClient:
         """Store the URL configuration hash."""
         session_factory = self.async_session_factory()
         async with session_factory() as session:
-
             result = await session.execute(select(ConfigState))
             config_state = result.scalar_one_or_none()
 
@@ -131,11 +118,33 @@ class DatabaseClient:
                 config_state.url_hash = url_hash
                 config_state.updated_at = datetime.now()
             else:
-                config_state = ConfigState(
-                    url_hash=url_hash,
-                    updated_at=datetime.now()
-                )
+                config_state = ConfigState(url_hash=url_hash, updated_at=datetime.now())
                 session.add(config_state)
 
             await session.commit()
             self.logger.info(f"Stored URL hash: {url_hash}")
+
+    async def get_schema_hash(self):
+        """Get the stored schema hash."""
+        session_factory = self.async_session_factory()
+        async with session_factory() as session:
+            result = await session.execute(select(ConfigState))
+            config_state = result.scalar_one_or_none()
+            return config_state.schema_hash if config_state and hasattr(config_state, "schema_hash") else None
+
+    async def set_schema_hash(self, schema_hash: str):
+        """Store the schema hash."""
+        session_factory = self.async_session_factory()
+        async with session_factory() as session:
+            result = await session.execute(select(ConfigState))
+            config_state = result.scalar_one_or_none()
+
+            if config_state:
+                config_state.schema_hash = schema_hash
+                config_state.updated_at = datetime.now()
+            else:
+                config_state = ConfigState(url_hash="", schema_hash=schema_hash, updated_at=datetime.now())
+                session.add(config_state)
+
+            await session.commit()
+            self.logger.info(f"Stored schema hash: {schema_hash}")

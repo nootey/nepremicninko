@@ -8,9 +8,18 @@ from playwright.async_api import async_playwright
 
 from app.core.config import config
 from app.core.database import DatabaseClient
-from app.core.models import Listing, ListingType
+from app.core.models import Listing, ListingType, get_model_hash
 from app.services.notify import send_discord_error, send_discord_notifications
 from app.services.parse import parse_page
+
+
+def determine_listing_type(url: str) -> ListingType:
+    if "oglasi-oddaja" in url:
+        return ListingType.renting
+    elif "oglasi-prodaja" in url:
+        return ListingType.selling
+    else:
+        return ListingType.selling
 
 
 async def read_urls(logger: Logger):
@@ -57,6 +66,31 @@ async def check_and_handle_url_changes(urls: list[str], db_client: DatabaseClien
     return False
 
 
+async def check_schema_changes(db_client: DatabaseClient, logger: Logger) -> bool:
+    """Check if model schema has changed and flush if needed."""
+    current_hash = get_model_hash()
+    stored_hash = await db_client.get_schema_hash()
+
+    if stored_hash is None:
+        logger.info("First run detected. Storing schema hash.")
+        await db_client.set_schema_hash(current_hash)
+        return False
+
+    if current_hash != stored_hash:
+        logger.warning("Database schema has changed!")
+        logger.warning(f"Stored hash: {stored_hash}")
+        logger.warning(f"Current hash: {current_hash}")
+
+        deleted_count = await db_client.flush_listings()
+        logger.info(f"Flushed {deleted_count} listings due to schema change")
+
+        await db_client.set_schema_hash(current_hash)
+        return True
+
+    logger.debug("Schema unchanged")
+    return False
+
+
 async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logger):
     logger.info(f"Scraping: {page_url}")
 
@@ -67,21 +101,19 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
         """Helper to create new browser page with consistent user agent."""
         return await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-
     browser_page = await create_browser_page()
 
     session_factory = db_client.async_session_factory()
     async with session_factory() as session:
         try:
             while True:
-
                 # Build URL with pagination
                 if page_num == 1:
                     current_url = page_url
                 else:
                     # Split URL into base and query string
-                    if '?' in page_url:
-                        base_url, query_string = page_url.split('?', 1)
+                    if "?" in page_url:
+                        base_url, query_string = page_url.split("?", 1)
                         current_url = f"{base_url}{page_num}/?{query_string}"
                     else:
                         current_url = f"{page_url}{page_num}/"
@@ -119,6 +151,8 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
                                         "price": data["price"],
                                         "old_price": existing.last_price,
                                         "type": "price_change",
+                                        "listing_type": existing.listing_type.value,
+                                        "size_sqm": existing.size_sqm,
                                     }
                                 )
                             else:
@@ -132,10 +166,10 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
                             new_listing = Listing(
                                 item_id=item_id,
                                 url=data["url"],
-                                listing_type=ListingType.selling,
+                                listing_type=determine_listing_type(page_url),
                                 price=data["price"],
                                 last_price=None,
-                                is_price_per_sqm=data.get("is_price_per_sqm", False),
+                                size_sqm=data.get("size_sqm"),
                                 location=data.get("location"),
                                 first_seen=now,
                                 last_seen=now,
@@ -151,8 +185,9 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
                                     "price": data["price"],
                                     "old_price": None,
                                     "type": "new",
-                                    "is_price_per_sqm": data.get("is_price_per_sqm", False),
+                                    "listing_type": determine_listing_type(page_url),
                                     "location": data.get("location"),
+                                    "size_sqm": data.get("size_sqm"),
                                 }
                             )
 
@@ -167,7 +202,9 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
                     break
 
                 if page_num >= config.app.max_pages_per_url:
-                    logger.warning(f"Available pages exceed configured maximum of: {config.app.max_pages_per_url}, stopping pagination")
+                    logger.warning(
+                        f"Available pages exceed configured maximum of: {config.app.max_pages_per_url}, stopping pagination"
+                    )
                     break
 
                 # Close and reopen page before going to next page
@@ -190,9 +227,11 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
 
 
 async def crawl(db_client: DatabaseClient, logger: Logger):
-
     c_logger = logger.getChild("crawler")
     c_logger.info("Starting crawler ...")
+
+    # Check for schema changes first
+    await check_schema_changes(db_client, c_logger)
 
     # Read URL configuration
     urls = await read_urls(c_logger)

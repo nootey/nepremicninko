@@ -33,20 +33,27 @@ def send_discord_batch(listings, logger: Logger):
             color = 16776960
             title = f"💰 Price Change - {listing_data['item_id']}"
 
-            if listing_data.get("is_price_per_sqm"):
-                price_field_value = f"~~€{listing_data['old_price']:,.2f}/m²~~ → **€{listing_data['price']:,.2f}/m²**"
-            else:
-                price_field_value = f"~~€{listing_data['old_price']:,.2f}~~ → **€{listing_data['price']:,.2f}**"
+            price_field_value = f"~~€{listing_data['old_price']:,.2f}~~ → **€{listing_data['price']:,.2f}**"
         else:
             color = 5763719
             title = f"🏡 New Listing - {listing_data['item_id']}"
 
-            if listing_data.get("is_price_per_sqm"):
-                price_field_value = f"€{listing_data['price']:,.2f}/m²"
-            else:
-                price_field_value = f"€{listing_data['price']:,.2f}"
+            price_field_value = f"€{listing_data['price']:,.2f}"
 
-        fields = [{"name": "💵 Price", "value": price_field_value, "inline": True}]
+        listing_type = listing_data.get("listing_type", "selling")
+        type_icon = "🏷️" if listing_type == "selling" else "🔑"
+        type_text = "Selling" if listing_type == "selling" else "Renting"
+        fields = [
+            {"name": f"{type_icon} Type", "value": type_text, "inline": True},
+            {"name": "💵 Price", "value": price_field_value, "inline": True},
+        ]
+
+        if listing_data.get("size_sqm"):
+            fields.append({"name": "📏 Size", "value": f"{listing_data['size_sqm']} m²", "inline": True})
+
+        if listing_type == "selling" and listing_data.get("size_sqm"):
+            price_per_sqm = listing_data["price"] / listing_data["size_sqm"]
+            fields.append({"name": "📐 Price/m²", "value": f"€{price_per_sqm:,.2f}", "inline": True})
 
         if listing_data.get("location"):
             fields.append({"name": "📍 Location", "value": listing_data["location"], "inline": True})
