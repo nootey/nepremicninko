@@ -5,11 +5,11 @@ from app.core.config import config
 from app.core.database import DatabaseClient
 from app.core.logger import AppLogger
 from app.services.crawler import crawl
+from app.services.notify import send_discord_error
 from app.services.scheduler import start_scheduler
 
 
 async def main():
-
     logger = AppLogger(name="app").get_logger()
     logger.info("Starting application")
     db_client = None
@@ -44,6 +44,10 @@ async def main():
 
     except Exception as e:
         logger.error(f"Application failure: {e}", exc_info=True)
+        if config.discord.notify_on_error:
+            send_discord_error(
+                f"Application failed to start: {e}", logger.getChild("discord"), "Critical Startup Error"
+            )
         raise
 
 
