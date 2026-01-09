@@ -120,7 +120,7 @@ async def scrape_url(browser, page_url, db_client: DatabaseClient, logger: Logge
 
                 logger.info(f"Navigating to page {page_num}: {current_url}")
 
-                await browser_page.goto(current_url, wait_until="domcontentloaded")
+                await browser_page.goto(current_url, wait_until="domcontentloaded", timeout=30000)  # 30s max
                 await asyncio.sleep(2)
 
                 listings, has_more = await parse_page(browser_page, logger)
